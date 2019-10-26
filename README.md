@@ -5,7 +5,7 @@ Laravel command line for scan Laravel project for obtain all texts which will ne
 ## Installation
 
 ```
-composer requite playerom/translations-scan --dev
+composer require playerom/translations-scan --dev
 ```
 
 ## Usage
