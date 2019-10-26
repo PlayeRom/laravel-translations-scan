@@ -4,6 +4,19 @@ Laravel command line for scan Laravel project for obtain all texts which will ne
 
 ## Installation
 
+To your composer.json file add repository:
+
+```
+"repositories": [
+    {
+        "type": "vcs",
+        "url": "git@github.com:PlayeRom/laravel-translations-scan.git"
+    }
+]
+```
+
+Then isntall package:
+
 ```
 composer require playerom/translations-scan --dev
 ```
@@ -16,3 +29,7 @@ php artisan lang:scan [<language>]
 Arguments:
     language              The language code as output file [default: "pl"]
 ```
+
+## Result
+
+As the result the json file will be created and located in *your-laravel-project/resources/lang/<language>.json* containing all found texts to translate.
