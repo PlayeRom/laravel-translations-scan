@@ -72,7 +72,7 @@ class TranslScanCommand extends Command
         $this->progressBar->finish();
 
         $this->info('');
-        $this->info('The output file has been crated: ' . $outputFile);
+        $this->info('The output file has been created: ' . $outputFile);
     }
 
     /**
