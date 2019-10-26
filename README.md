@@ -32,4 +32,4 @@ Arguments:
 
 ## Result
 
-As the result the json file will be created and located in *your-laravel-project/resources/lang/<language>.json* containing all found texts to translate.
+As the result the json file will be created and located in *your-laravel-project/resources/lang/&lt;language&gt;.json* containing all found texts to translate.
