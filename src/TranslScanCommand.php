@@ -5,6 +5,8 @@ namespace PlayeRom\TranslationsScan;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use Symfony\Component\Console\Helper\ProgressBar;
 
 /**
  * Command class
@@ -29,20 +31,12 @@ class TranslScanCommand extends Command
      */
     protected $description = 'Scan Laravel project for obtain all texts which will need translations.';
 
-    /**
-     * @var Filesystem
-     */
-    private $fileSystem;
+    private Filesystem $fileSystem;
 
-    /**
-     * @var \Symfony\Component\Console\Helper\ProgressBar
-     */
-    private $progressBar;
+    private ?ProgressBar $progressBar;
 
     /**
      * Create a new command instance.
-     *
-     * @return void
      */
     public function __construct(Filesystem $fileSystem)
     {
@@ -53,13 +47,11 @@ class TranslScanCommand extends Command
 
     /**
      * Execute the console command.
-     *
-     * @return mixed
      */
-    public function handle()
+    public function handle(): int
     {
         $langaugeCode = $this->argument('language');
-        $outputFile = resource_path() . '/lang/' . $langaugeCode . '.json';
+        $outputFile = base_path("/lang/$langaugeCode.json");
 
         $resultsArray = array_unique(Arr::sort($this->parseFiles()));
 
@@ -72,7 +64,9 @@ class TranslScanCommand extends Command
         $this->progressBar->finish();
 
         $this->info('');
-        $this->info('The output file has been created: ' . $outputFile);
+        $this->info("The output file has been created: $outputFile");
+
+        return Command::SUCCESS;
     }
 
     /**
@@ -80,7 +74,7 @@ class TranslScanCommand extends Command
      *
      * @return array Array with texts found.
      */
-    private function parseFiles() : array
+    private function parseFiles(): array
     {
         $resultsArray = [];
 
@@ -101,24 +95,22 @@ class TranslScanCommand extends Command
     }
 
     /**
-     *
-     * @param string $file
-     * @param array $resultsArray
-     * @return void
+     * Parse single PHP file.
      */
-    private function parseSinglePhpFile(string $file, array &$resultsArray)
+    private function parseSinglePhpFile(string $file, array &$resultsArray): void
     {
         $content = $this->fileSystem->get($file);
 
-        $contentLength = mb_strlen($content);
+        $contentLength = Str::length($content);
         $cursor = 0;
         while ($cursor < $contentLength) {
-            $startIgnore = mb_strpos($content, self::START_UNDERSCORE_EMPTY, $cursor);
-            $start__ = mb_strpos($content, self::START_UNDERSCORE_FUNC, $cursor);
-            $startLang = mb_strpos($content, self::START_LANG_FUNC, $cursor);
+            $startIgnore = Str::position($content, self::START_UNDERSCORE_EMPTY, $cursor);
+            $start__     = Str::position($content, self::START_UNDERSCORE_FUNC, $cursor);
+            $startLang   = Str::position($content, self::START_LANG_FUNC, $cursor);
+
             if ($startIgnore !== false && $startIgnore === $start__) {
                 // empty __(), skip it and continue
-                $cursor += mb_strlen(self::START_UNDERSCORE_EMPTY);
+                $cursor += Str::length(self::START_UNDERSCORE_EMPTY);
                 continue;
             }
 
@@ -130,10 +122,10 @@ class TranslScanCommand extends Command
             $this->setIntMaxIfFalse($startLang);
 
             $start = min([$start__, $startLang]);
-            $startMarkerLen = (
+            $startMarkerLen = Str::length(
                 $start === $start__
-                    ? mb_strlen(self::START_UNDERSCORE_FUNC)
-                    : mb_strlen(self::START_LANG_FUNC)
+                    ? self::START_UNDERSCORE_FUNC
+                    : self::START_LANG_FUNC
             );
 
             // find first text into quotation mark
@@ -156,12 +148,6 @@ class TranslScanCommand extends Command
      * Check that string is concatenate
      * Check which char is next after ending $quoteMark, whether '.' whether ')'
      * If it's '.' then we have continuation of the string!
-     *
-     * @param integer $end
-     * @param integer $contentLength
-     * @param string $content
-     * @param string $quoteMark
-     * @return integer
      */
     private function checkConcateString(
         int $end,
@@ -169,11 +155,11 @@ class TranslScanCommand extends Command
         string $content,
         string $quoteMark,
         array &$resultsArray
-    ) : int {
+    ): int {
         $index = $end + 1;
         $cursorShift = $index;
         for (; $index < $contentLength; ++$index) {
-            $ch = mb_substr($content, $index, 1);
+            $ch = Str::substr($content, $index, 1);
             if ($ch === ')' || $ch === ',') {
                 // we haven't concatenation
                 break;
@@ -196,11 +182,8 @@ class TranslScanCommand extends Command
 
     /**
      * Set PHP_INT_MAX if given variable if false
-     *
-     * @param type $var
-     * @return void
      */
-    private function setIntMaxIfFalse(&$var)
+    private function setIntMaxIfFalse(int|bool &$var): void
     {
         if ($var === false) {
             $var = PHP_INT_MAX;
@@ -210,17 +193,17 @@ class TranslScanCommand extends Command
     /**
      * Find text beetwen quotations
      *
-     * @param string $content
-     * @param integer $start
-     * @param integer|boolean $outEnd
-     * @param string $outQuoteMark
-     * @return string Empty string if nothing found.
+     * @return string  Empty string if nothing found.
      */
-    private function findTextBeetwenQuotations(string $content, int $start, &$outEnd, string &$outQuoteMark) : string
-    {
-        $startNoQuote = mb_strpos($content, ')', $start);
-        $startQuote1 = mb_strpos($content, '\'', $start);
-        $startQuote2 = mb_strpos($content, '"', $start);
+    private function findTextBeetwenQuotations(
+        string $content,
+        int $start,
+        int|bool &$outEnd,
+        string &$outQuoteMark
+    ): string {
+        $startNoQuote = Str::position($content, ')', $start);
+        $startQuote1  = Str::position($content, '\'', $start);
+        $startQuote2  = Str::position($content, '"', $start);
 
         if ($startQuote1 === false && $startQuote2 === false) {
             return '';
@@ -234,18 +217,18 @@ class TranslScanCommand extends Command
             // there is no string into lang function, e.g. we are in regular expression _(?!_)
             return '';
         }
-        $outQuoteMark = mb_substr($content, $startQuote, 1);
+        $outQuoteMark = Str::substr($content, $startQuote, 1);
 
         // search end string
         $outEnd = false;
         $tmp = $startQuote + 1;
         while (true) {
-            $outEnd = mb_strpos($content, $outQuoteMark, $tmp);
+            $outEnd = Str::position($content, $outQuoteMark, $tmp);
             if ($outEnd === false || $outEnd <= 0) {
                 break;
             }
 
-            if (mb_substr($content, $outEnd - 1, 1) === "\\") {
+            if (Str::substr($content, $outEnd - 1, 1) === "\\") {
                 // check for \' in string, if it's \' continue searching the end of string
                 $tmp = $outEnd + 1;
                 continue;
@@ -254,17 +237,14 @@ class TranslScanCommand extends Command
             break;
         }
 
-        $text = mb_substr($content, $startQuote + 1, $outEnd - $startQuote - 1);
-        return str_replace("\\'", "'", $text);
+        $text = Str::substr($content, $startQuote + 1, $outEnd - $startQuote - 1);
+        return Str::replace("\\'", "'", $text);
     }
 
     /**
      * Read current values in output json file
-     *
-     * @param string $outputFile
-     * @retrun array
      */
-    private function getCuttentTextsInOutpurFile(string $outputFile) : array
+    private function getCuttentTextsInOutpurFile(string $outputFile): array
     {
         try {
             $content = $this->fileSystem->get($outputFile);
@@ -280,12 +260,8 @@ class TranslScanCommand extends Command
 
     /**
      * Create ouput json content
-     *
-     * @param array $currentTexts
-     * @param array $resultsArray
-     * @return string
      */
-    private function createOutput(array $currentTexts, array $resultsArray) : string
+    private function createOutput(array $currentTexts, array $resultsArray): string
     {
         $result = '{' . PHP_EOL;
 
@@ -313,24 +289,16 @@ class TranslScanCommand extends Command
 
     /**
      * Replace some chars to another for json format
-     *
-     * @param string $text
-     * @return string
      */
-    private function replaceInAlreadyJsonText(string $text)
+    private function replaceInAlreadyJsonText(string $text): string
     {
-        return str_replace(['"', PHP_EOL], ['\\"', '\\n'], $text);
+        return Str::replace(['"', PHP_EOL], ['\\"', '\\n'], $text);
     }
 
     /**
      * Get json string key and value
-     *
-     * @param string $key
-     * @param string $value
-     * @param string $comma
-     * @return string
      */
-    private function getJsonLine(string $key, string $value, string &$comma) : string
+    private function getJsonLine(string $key, string $value, string &$comma): string
     {
         $result = '';
         if (!empty($comma)) {

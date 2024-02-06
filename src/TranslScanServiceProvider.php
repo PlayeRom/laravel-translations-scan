@@ -9,17 +9,15 @@ use Illuminate\Support\ServiceProvider;
  */
 class TranslScanServiceProvider extends ServiceProvider
 {
-	/**
-	 * Bootstrap any application services.
-	 *
-	 * @return void
-	 */
-    public function boot()
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-		    $this->commands([
-		        TranslScanCommand::class,
-		    ]);
-		}
+            $this->commands([
+                TranslScanCommand::class,
+            ]);
+        }
     }
 }
